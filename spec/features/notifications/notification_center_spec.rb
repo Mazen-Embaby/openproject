@@ -2,19 +2,19 @@ require 'spec_helper'
 require 'support/components/notifications/center'
 
 describe "Notification center", type: :feature, js: true do
-  shared_let(:project) { FactoryBot.create :project }
-  shared_let(:work_package) { FactoryBot.create :work_package, project: project }
-  shared_let(:recipient) do
+  let!(:project) { FactoryBot.create :project }
+  let!(:recipient) do
+    # Needs to take place before the work package is created so that the notification listener is set up
     FactoryBot.create :user,
                       member_in_project: project,
                       member_with_permissions: %i[view_work_packages]
   end
-  shared_let(:notification) do
-    FactoryBot.create :notification,
-                      recipient: recipient,
-                      project: project,
-                      resource: work_package,
-                      journal: work_package.journals.last
+  let!(:work_package) do
+    FactoryBot.create :work_package, project: project
+  end
+  let(:notification) do
+    # Will have been created via the JOURNAL_CREATED event listeners
+    work_package.journals.last.notifications.first
   end
 
   let(:center) { ::Components::Notifications::Center.new }
@@ -23,7 +23,6 @@ describe "Notification center", type: :feature, js: true do
     current_user { recipient }
 
     it 'will not show all details of the journal' do
-      allow(notification.journal).to receive(:initial?).and_return true
       visit home_path
       center.expect_bell_count 1
       center.open
